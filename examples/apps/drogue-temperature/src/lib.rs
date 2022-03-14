@@ -46,6 +46,15 @@ use embedded_hal::digital::v2::InputPin;
 use embedded_hal_async::digital::Wait;
 use serde::{Deserialize, Serialize};
 
+use core::convert::Infallible;
+use defmt::{error, info, warn, trace};
+use drogue_network::drogue_network::{DrogueNetwork, DrogueConnectionFactory};
+use drogue_device::traits::dns::DnsResolver;
+use rust_mqtt::client::client_config::ClientConfig;
+use rust_mqtt::client::client_v5::MqttClientV5;
+use rust_mqtt::network::network_trait::{NetworkConnection, NetworkConnectionFactory};
+use rust_mqtt::packet::v5::publish_packet::QualityOfService;
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct GeoLocation {
@@ -77,7 +86,7 @@ pub struct App<B>
     port: u16,
     username: &'static str,
     password: &'static str,
-    connection_factory: DrogueConnectionFactory<B>,
+    connection_factory: DrogueConnectionFactory<<B as TemperatureBoard>::Network>,
 }
 
 impl<B> App<B>
@@ -126,7 +135,7 @@ impl<B> Actor for App<B>
         async move {
             let mut counter: usize = 0;
             let mut data: Option<TemperatureData> = None;
-            let mut config = ClientConfig::<0>::new();
+            let mut config = ClientConfig::<5>::new();
             config.qos = QualityOfService::QoS0;
             config.keep_alive = 360;
             let mut rec_buf = [0; 1024];
@@ -141,41 +150,42 @@ impl<B> Actor for App<B>
                         }
                         Command::Send => {
                             if let Some(sensor_data) = data.as_ref() {
-                                log::info!("Sending temperature measurement number {}", counter);
+                                info!("Sending temperature measurement number {}", counter);
                                 counter += 1;
 
-                                let ip = DNS.resolve(self.host).await;
-                                let network = self.connection_factory.connect(ip[0], self.port).await;
-                                if let Err(r) = network {
-                                    log:error!("[NETWORK ERROR]: {}", r);
-                                }
-                                let mut client = MqttClientV5::<DrogueNetwork<B>, 0>::new(
-                                    & mut network.unwrap(),
-                                    &send_buf,
-                                    1024,
-                                    &rec_buf,
-                                    1024,
-                                    config.clone());§
+                                let network = self.connection_factory.connect([37, 205, 11, 180], 1997).await;
+                                if let Ok(connection) = network {
+                                    trace!("Connected");
+                                    let mut client = MqttClientV5::<DrogueNetwork<<B as TemperatureBoard>::Network>, 5>::new(
+                                        connection,
+                                        & mut send_buf,
+                                        1024,
+                                        & mut rec_buf,
+                                        1024,
+                                        config.clone());
 
-                                let mut result = { client.connect_to_broker().await };
+                                    trace!("Connection to broker!");
+                                    let mut result = { client.connect_to_broker().await };
+                                    trace!("Connected to broker!");
 
-                                let msg = serde_json_core::ser::to_string(&sensor_data).unwrap();
-                                log::info!("[Publisher] Sending new message {} to topic {}", msg, topic);
-                                result = { client.send_message(topic, msg.as_str()).await };
+                                    let msg: String<128> = serde_json_core::ser::to_string(&sensor_data).unwrap();
+                                    info!("[Publisher] Sending new message {} to topic {}", msg, topic);
+                                    result = { client.send_message(topic, msg.as_str()).await };
+                                    trace!("Message sent");
 
-                                log::info!("[Publisher] Disconnecting!");
-                                result = { client.disconnect().await };
-
-                                match response {
-                                    Ok(response) => {
-                                        log::info!("Everything went smooth")
+                                    info!("[Publisher] Disconnecting!");
+                                    result = { client.disconnect().await };
+                                    match result {
+                                        Ok(result) => {
+                                            info!("Everything went smooth")
+                                        }
+                                        Err(e) => {
+                                            warn!("Error doing MQTT request");
+                                        }
                                     }
-                                    Err(e) => {
-                                        log::warn!("Error doing HTTP request: {:?}", e);
-                                    }
+                                } else {
+                                    info!("Not temperature measurement received yet");
                                 }
-                            } else {
-                                log::info!("Not temperature measurement received yet");
                             }
                         }
                     },
@@ -357,14 +367,6 @@ impl SendTrigger for TimeTrigger {
     }
 }
 
-use core::convert::Infallible;
-use drogue_device::traits::dns::DnsResolver;
-use log::{error, info, trace};
-use rust_mqtt::client::client_config::ClientConfig;
-use rust_mqtt::client::client_v5::MqttClientV5;
-use rust_mqtt::network::network_trait::NetworkConnectionFactory;
-use rust_mqtt::packet::v5::publish_packet::QualityOfService;
-use crate::drogue_network::{DrogueConnectionFactory, DrogueNetwork};
 
 pub struct AlwaysReady;
 impl embedded_hal_1::digital::ErrorType for AlwaysReady {
@@ -451,7 +453,7 @@ impl TemperatureSensor<Celsius> for FakeSensor {
 }
 
 
-const IP: &str = drogue::config!("hostname");
+const HOST: &str = drogue::config!("hostname");
 const PORT: &str = drogue::config!("port");
 const USERNAME: &str = drogue::config!("mqtt-username");
 const PASSWORD: &str = drogue::config!("mqtt-password");

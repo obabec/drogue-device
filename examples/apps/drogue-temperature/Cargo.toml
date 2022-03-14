@@ -30,3 +30,4 @@ drogue-network = { path = "/Users/obabec/development/school/rust-mqtt/examples/d
 default = ["std"]
 tls = ["drogue-tls", "drogue-device/tls"]
 std = ["serde-json-core/std", "embassy/std"]
+

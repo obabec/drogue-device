@@ -454,17 +454,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "drogue-network"
+version = "0.0.1"
+dependencies = [
+ "defmt",
+ "drogue-device",
+ "rust-mqtt",
+]
+
+[[package]]
 name = "drogue-temperature"
 version = "0.1.0"
 dependencies = [
  "defmt",
  "drogue-device",
+ "drogue-network",
  "embassy",
  "embedded-hal 0.2.7",
  "embedded-hal 1.0.0-alpha.6",
  "embedded-hal-async",
  "heapless",
  "rand_core",
+ "rust-mqtt",
  "serde 1.0.136",
  "serde-json-core",
 ]
@@ -1302,6 +1313,15 @@ name = "rust-ini"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e52c148ef37f8c375d49d5a73aa70713125b7f19095948a923f80afdeb22ec2"
+
+[[package]]
+name = "rust-mqtt"
+version = "0.0.1"
+dependencies = [
+ "defmt",
+ "heapless",
+ "rand_core",
+]
 
 [[package]]
 name = "rustc_version"
