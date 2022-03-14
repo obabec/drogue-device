@@ -1,0 +1,56 @@
+1628582674499	geckodriver	INFO	Listening on 127.0.0.1:49282
+1628582675169	mozrunner::runner	INFO	Running command: "/Applications/Firefox.app/Contents/MacOS/firefox-bin" "--marionette" "-foreground" "-no-remote" "-profile" "/var/folders/2z/k2l6vkfs62v5bkfdq1rkmbg00000gn/T/rust_mozprofilerjXS0q"
+JavaScript error: resource://cck2/CCK2.jsm, line 1444: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2BrowserOverlay.jsm, line 21: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutSupportOverlay.jsm, line 20: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2PreferencesOverlay.jsm, line 23: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutAddonsOverlay.jsm, line 20: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutDialogOverlay.jsm, line 15: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2.jsm, line 1444: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2BrowserOverlay.jsm, line 21: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutSupportOverlay.jsm, line 20: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2PreferencesOverlay.jsm, line 23: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutAddonsOverlay.jsm, line 20: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutDialogOverlay.jsm, line 15: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2.jsm, line 1444: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2BrowserOverlay.jsm, line 21: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutSupportOverlay.jsm, line 20: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2PreferencesOverlay.jsm, line 23: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutAddonsOverlay.jsm, line 20: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutDialogOverlay.jsm, line 15: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2.jsm, line 1444: TypeError: subject.QueryInterface is not a function
+2021-08-10 10:04:37.532 firefox-bin[29982:630730] Warning: Expected min height of view: (<NSButton: 0x13317c400>) to be less than or equal to 30 but got a height of 32.000000. This error will be logged once per view in violation.
+2021-08-10 10:04:37.533 firefox-bin[29982:630730] Warning: Expected min height of view: (<NSButton: 0x13db9e400>) to be less than or equal to 30 but got a height of 32.000000. This error will be logged once per view in violation.
+2021-08-10 10:04:37.533 firefox-bin[29982:630730] Warning: Expected min height of view: (<NSButton: 0x13db9c000>) to be less than or equal to 30 but got a height of 32.000000. This error will be logged once per view in violation.
+2021-08-10 10:04:37.534 firefox-bin[29982:630730] Warning: Expected min height of view: (<NSButton: 0x13db9cc00>) to be less than or equal to 30 but got a height of 32.000000. This error will be logged once per view in violation.
+2021-08-10 10:04:37.535 firefox-bin[29982:630730] Warning: Expected min height of view: (<NSButton: 0x13db9c800>) to be less than or equal to 30 but got a height of 32.000000. This error will be logged once per view in violation.
+2021-08-10 10:04:37.535 firefox-bin[29982:630730] Warning: Expected min height of view: (<NSPopoverTouchBarItemButton: 0x13db9f800>) to be less than or equal to 30 but got a height of 32.000000. This error will be logged once per view in violation.
+2021-08-10 10:04:37.536 firefox-bin[29982:630730] Warning: Expected min height of view: (<NSPopoverTouchBarItemButton: 0x13dc65400>) to be less than or equal to 30 but got a height of 32.000000. This error will be logged once per view in violation.
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+JavaScript error: resource://cck2/CCK2.jsm, line 665: TypeError: can't convert undefined to object
+1628582679595	Marionette	INFO	Listening on port 49293
+1628582679612	Marionette	WARN	TLS certificate errors will be ignored for this session
+JavaScript error: resource://cck2/CCK2AboutHomeFramescript.js, line 19: TypeError: subject.QueryInterface is not a function
+1628748844585	Marionette	INFO	Stopped listening on port 49293
