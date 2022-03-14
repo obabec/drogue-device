@@ -18,7 +18,7 @@ class S(BaseHTTPRequestHandler):
 
 def run(server_class=HTTPServer, handler_class=S, port=8080):
     logging.basicConfig(level=logging.INFO)
-    server_address = ('192.168.1.2', port)
+    server_address = ('10.200.153.9', port)
     httpd = server_class(server_address, handler_class)
     logging.info('Starting httpd...\n')
     try:
@@ -28,4 +28,4 @@ def run(server_class=HTTPServer, handler_class=S, port=8080):
     httpd.server_close()
     logging.info('Stopping httpd...\n')
 
-run(port=12345)
+run(port=18563)

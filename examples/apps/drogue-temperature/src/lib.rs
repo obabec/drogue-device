@@ -1,15 +1,36 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) [2022] [Ondrej Babec <ond.babec@gmail.com>]
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #![no_std]
 #![macro_use]
 #![feature(type_alias_impl_trait)]
 #![feature(generic_associated_types)]
-
-pub(crate) mod fmt;
-
 use core::future::Future;
+use heapless::String;
 use drogue_device::{
     actors::sensors::Temperature,
     actors::tcp::TcpActor,
-    clients::http::*,
     domain::{
         temperature::{Celsius, TemperatureScale},
         SensorAcquisition,
@@ -23,14 +44,7 @@ use drogue_device::{
 use embassy::executor::Spawner;
 use embedded_hal::digital::v2::InputPin;
 use embedded_hal_async::digital::Wait;
-use heapless::String;
 use serde::{Deserialize, Serialize};
-
-#[cfg(feature = "tls")]
-use drogue_tls::Aes128GcmSha256;
-
-#[cfg(feature = "tls")]
-use drogue_device::actors::net::TlsConnectionFactory;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -56,74 +70,69 @@ pub enum Command {
 }
 
 pub struct App<B>
-where
-    B: TemperatureBoard + 'static,
+    where
+        B: TemperatureBoard + 'static,
 {
     host: &'static str,
     port: u16,
     username: &'static str,
     password: &'static str,
-    connection_factory: ConnectionFactory<B>,
+    connection_factory: DrogueConnectionFactory<B>,
 }
 
-#[cfg(feature = "tls")]
-type ConnectionFactory<B> = TlsConnectionFactory<
-    'static,
-    <B as TemperatureBoard>::Network,
-    Aes128GcmSha256,
-    <B as TemperatureBoard>::Rng,
-    1,
->;
-
-#[cfg(not(feature = "tls"))]
-type ConnectionFactory<B> = Address<<B as TemperatureBoard>::Network>;
-
 impl<B> App<B>
-where
-    B: TemperatureBoard + 'static,
+    where
+        B: TemperatureBoard + 'static,
 {
     pub fn new(
         host: &'static str,
         port: u16,
         username: &'static str,
         password: &'static str,
-        connection_factory: ConnectionFactory<B>,
+        address: Address<<B as TemperatureBoard>::Network>
     ) -> Self {
         Self {
             host,
             port,
             username,
             password,
-            connection_factory,
+            connection_factory: DrogueConnectionFactory::new(address),
         }
     }
 }
 
 impl<B> Actor for App<B>
-where
-    B: TemperatureBoard + 'static,
+    where
+        B: TemperatureBoard + 'static,
 {
     type Message<'m>
-    where
-        B: 'm,
+        where
+            B: 'm,
     = Command;
 
     type OnMountFuture<'m, M>
-    where
-        B: 'm,
-        M: 'm,
+        where
+            B: 'm,
+            M: 'm,
     = impl Future<Output = ()> + 'm;
     fn on_mount<'m, M>(
         &'m mut self,
         _: Address<Self>,
         inbox: &'m mut M,
     ) -> Self::OnMountFuture<'m, M>
-    where
-        M: Inbox<Self> + 'm,
+        where
+            M: Inbox<Self> + 'm,
     {
         async move {
             let mut counter: usize = 0;
             let mut data: Option<TemperatureData> = None;
+            let mut config = ClientConfig::<0>::new();
+            config.qos = QualityOfService::QoS0;
+            config.keep_alive = 360;
+            let mut rec_buf = [0; 1024];
+            let mut send_buf = [0; 1024];
+            let topic = "test/topic";
+
             loop {
                 match inbox.next().await {
                     Some(mut m) => match m.message() {
@@ -132,46 +141,41 @@ where
                         }
                         Command::Send => {
                             if let Some(sensor_data) = data.as_ref() {
-                                info!("Sending temperature measurement number {}", counter);
+                                log::info!("Sending temperature measurement number {}", counter);
                                 counter += 1;
-                                let mut client = HttpClient::new(
-                                    &mut self.connection_factory,
-                                    &DNS,
-                                    self.host,
-                                    self.port,
-                                    self.username,
-                                    self.password,
-                                );
 
-                                let tx: String<128> =
-                                    serde_json_core::ser::to_string(&sensor_data).unwrap();
-                                let mut rx_buf = [0; 1024];
-                                let response = client
-                                    .request(
-                                        Request::post()
-                                            // Pass on schema
-                                            .path("/v1/foo?data_schema=urn:drogue:iot:temperature")
-                                            .payload(tx.as_bytes())
-                                            .content_type(ContentType::ApplicationJson),
-                                        &mut rx_buf[..],
-                                    )
-                                    .await;
+                                let ip = DNS.resolve(self.host).await;
+                                let network = self.connection_factory.connect(ip[0], self.port).await;
+                                if let Err(r) = network {
+                                    log:error!("[NETWORK ERROR]: {}", r);
+                                }
+                                let mut client = MqttClientV5::<DrogueNetwork<B>, 0>::new(
+                                    & mut network.unwrap(),
+                                    &send_buf,
+                                    1024,
+                                    &rec_buf,
+                                    1024,
+                                    config.clone());§
+
+                                let mut result = { client.connect_to_broker().await };
+
+                                let msg = serde_json_core::ser::to_string(&sensor_data).unwrap();
+                                log::info!("[Publisher] Sending new message {} to topic {}", msg, topic);
+                                result = { client.send_message(topic, msg.as_str()).await };
+
+                                log::info!("[Publisher] Disconnecting!");
+                                result = { client.disconnect().await };
+
                                 match response {
                                     Ok(response) => {
-                                        info!("Response status: {:?}", response.status);
-                                        if let Some(payload) = response.payload {
-                                            let s = core::str::from_utf8(payload).unwrap();
-                                            trace!("Payload: {}", s);
-                                        } else {
-                                            trace!("No response body");
-                                        }
+                                        log::info!("Everything went smooth")
                                     }
                                     Err(e) => {
-                                        warn!("Error doing HTTP request: {:?}", e);
+                                        log::warn!("Error doing HTTP request: {:?}", e);
                                     }
                                 }
                             } else {
-                                info!("Not temperature measurement received yet");
+                                log::info!("Not temperature measurement received yet");
                             }
                         }
                     },
@@ -186,7 +190,7 @@ static DNS: StaticDnsResolver<'static, 2> = StaticDnsResolver::new(&[
     DnsEntry::new("localhost", IpAddress::new_v4(127, 0, 0, 1)),
     DnsEntry::new(
         "http.sandbox.drogue.cloud",
-        IpAddress::new_v4(65, 108, 135, 161),
+        IpAddress::new_v4(10, 200, 153, 9),
     ),
 ]);
 
@@ -203,13 +207,13 @@ pub trait TemperatureBoard {
 pub trait SendTrigger {
     type TriggerFuture<'m>: Future
     where
-        Self: 'm;
+    Self: 'm;
     fn wait<'m>(&'m mut self) -> Self::TriggerFuture<'m>;
 }
 
 pub struct TemperatureDevice<B>
-where
-    B: TemperatureBoard + 'static,
+    where
+        B: TemperatureBoard + 'static,
 {
     network: B::NetworkPackage,
     app: ActorContext<App<B>, 3>,
@@ -218,8 +222,8 @@ where
 }
 
 pub struct TemperatureBoardConfig<B>
-where
-    B: TemperatureBoard + 'static,
+    where
+        B: TemperatureBoard + 'static,
 {
     pub sensor: B::Sensor,
     pub sensor_ready: B::SensorReadyIndicator,
@@ -228,8 +232,8 @@ where
 }
 
 impl<B> TemperatureDevice<B>
-where
-    B: TemperatureBoard + 'static,
+    where
+        B: TemperatureBoard + 'static,
 {
     pub fn new(network: B::NetworkPackage) -> Self {
         Self {
@@ -247,11 +251,6 @@ where
         config: TemperatureBoardConfig<B>,
     ) {
         let network = self.network.mount(config.network_config, spawner);
-        #[cfg(feature = "tls")]
-        let network = {
-            static mut TLS_BUFFER: [u8; 16384] = [0; 16384];
-            TlsConnectionFactory::new(network, _rng, [unsafe { &mut TLS_BUFFER }; 1])
-        };
 
         let app = self.app.mount(
             spawner,
@@ -275,8 +274,8 @@ where
 }
 
 pub struct AppTrigger<B>
-where
-    B: TemperatureBoard + 'static,
+    where
+        B: TemperatureBoard + 'static,
 {
     trigger: B::SendTrigger,
     sensor: Address<Temperature<B::SensorReadyIndicator, B::Sensor, B::TemperatureScale>>,
@@ -284,8 +283,8 @@ where
 }
 
 impl<B> AppTrigger<B>
-where
-    B: TemperatureBoard + 'static,
+    where
+        B: TemperatureBoard + 'static,
 {
     pub fn new(
         trigger: B::SendTrigger,
@@ -301,19 +300,19 @@ where
 }
 
 impl<B> Actor for AppTrigger<B>
-where
-    B: TemperatureBoard + 'static,
+    where
+        B: TemperatureBoard + 'static,
 {
     type OnMountFuture<'m, M>
-    where
-        Self: 'm,
-        B: 'm,
-        M: 'm,
+        where
+            Self: 'm,
+            B: 'm,
+            M: 'm,
     = impl Future<Output = ()> + 'm;
 
     fn on_mount<'m, M>(&'m mut self, _: Address<Self>, _: &'m mut M) -> Self::OnMountFuture<'m, M>
-    where
-        M: Inbox<Self> + 'm,
+        where
+            M: Inbox<Self> + 'm,
     {
         async move {
             loop {
@@ -335,12 +334,12 @@ where
 }
 
 impl<B> SendTrigger for B
-where
-    B: Button + 'static,
+    where
+        B: Button + 'static,
 {
     type TriggerFuture<'m>
-    where
-        B: 'm,
+        where
+            B: 'm,
     = impl Future + 'm;
     fn wait<'m>(&'m mut self) -> Self::TriggerFuture<'m> {
         self.wait_released()
@@ -350,8 +349,8 @@ where
 pub struct TimeTrigger(pub embassy::time::Duration);
 impl SendTrigger for TimeTrigger {
     type TriggerFuture<'m>
-    where
-        Self: 'm,
+        where
+            Self: 'm,
     = impl Future + 'm;
     fn wait<'m>(&'m mut self) -> Self::TriggerFuture<'m> {
         embassy::time::Timer::after(self.0)
@@ -359,6 +358,14 @@ impl SendTrigger for TimeTrigger {
 }
 
 use core::convert::Infallible;
+use drogue_device::traits::dns::DnsResolver;
+use log::{error, info, trace};
+use rust_mqtt::client::client_config::ClientConfig;
+use rust_mqtt::client::client_v5::MqttClientV5;
+use rust_mqtt::network::network_trait::NetworkConnectionFactory;
+use rust_mqtt::packet::v5::publish_packet::QualityOfService;
+use crate::drogue_network::{DrogueConnectionFactory, DrogueNetwork};
+
 pub struct AlwaysReady;
 impl embedded_hal_1::digital::ErrorType for AlwaysReady {
     type Error = Infallible;
@@ -366,8 +373,8 @@ impl embedded_hal_1::digital::ErrorType for AlwaysReady {
 
 impl Wait for AlwaysReady {
     type WaitForHighFuture<'a>
-    where
-        Self: 'a,
+        where
+            Self: 'a,
     = impl Future<Output = Result<(), Self::Error>> + 'a;
 
     fn wait_for_high<'a>(&'a mut self) -> Self::WaitForHighFuture<'a> {
@@ -375,8 +382,8 @@ impl Wait for AlwaysReady {
     }
 
     type WaitForLowFuture<'a>
-    where
-        Self: 'a,
+        where
+            Self: 'a,
     = impl Future<Output = Result<(), Self::Error>> + 'a;
 
     fn wait_for_low<'a>(&'a mut self) -> Self::WaitForLowFuture<'a> {
@@ -384,8 +391,8 @@ impl Wait for AlwaysReady {
     }
 
     type WaitForRisingEdgeFuture<'a>
-    where
-        Self: 'a,
+        where
+            Self: 'a,
     = impl Future<Output = Result<(), Self::Error>> + 'a;
 
     fn wait_for_rising_edge<'a>(&'a mut self) -> Self::WaitForRisingEdgeFuture<'a> {
@@ -393,8 +400,8 @@ impl Wait for AlwaysReady {
     }
 
     type WaitForFallingEdgeFuture<'a>
-    where
-        Self: 'a,
+        where
+            Self: 'a,
     = impl Future<Output = Result<(), Self::Error>> + 'a;
 
     fn wait_for_falling_edge<'a>(&'a mut self) -> Self::WaitForFallingEdgeFuture<'a> {
@@ -402,8 +409,8 @@ impl Wait for AlwaysReady {
     }
 
     type WaitForAnyEdgeFuture<'a>
-    where
-        Self: 'a,
+        where
+            Self: 'a,
     = impl Future<Output = Result<(), Self::Error>> + 'a;
 
     fn wait_for_any_edge<'a>(&'a mut self) -> Self::WaitForAnyEdgeFuture<'a> {
@@ -432,7 +439,7 @@ impl TemperatureSensor<Celsius> for FakeSensor {
     }
 
     type ReadFuture<'m> =
-        impl Future<Output = Result<SensorAcquisition<Celsius>, Self::Error>> + 'm;
+    impl Future<Output = Result<SensorAcquisition<Celsius>, Self::Error>> + 'm;
     fn temperature<'m>(&'m mut self) -> Self::ReadFuture<'m> {
         async move {
             Ok(SensorAcquisition {
@@ -443,7 +450,8 @@ impl TemperatureSensor<Celsius> for FakeSensor {
     }
 }
 
-const HOST: &str = drogue::config!("hostname");
+
+const IP: &str = drogue::config!("hostname");
 const PORT: &str = drogue::config!("port");
-const USERNAME: &str = drogue::config!("http-username");
-const PASSWORD: &str = drogue::config!("http-password");
+const USERNAME: &str = drogue::config!("mqtt-username");
+const PASSWORD: &str = drogue::config!("mqtt-password");

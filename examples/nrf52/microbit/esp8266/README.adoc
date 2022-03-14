@@ -1,4 +1,4 @@
-== microbit-esp8266 drogue-device example
+ == microbit-esp8266 drogue-device example
 
 This example application runs out of the box on the BBC micro:bit v2.0.
 It relies on a ESP8266 breakout module flashed with AT firmware. The micro:bit communicates with the

@@ -111,6 +111,8 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
         network_config: (),
     };
 
+    defmt::info!("Started");
+
     DEVICE
         .configure(TemperatureDevice::new(WifiDriver(Esp8266Wifi::new(
             u, enable_pin, reset_pin,
