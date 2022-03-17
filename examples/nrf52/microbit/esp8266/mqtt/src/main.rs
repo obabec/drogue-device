@@ -222,7 +222,7 @@ impl Actor for Receiver {
                     let message = msg.unwrap();
                     let act_message = core::str::from_utf8(message).unwrap();
                     defmt::info!("[RECEIVER] Received: {}", act_message);
-                    self.display.scroll(act_message);
+                    self.display.scroll(act_message).await;
                 } else {
                     defmt::warn!("[RECEIVER] Could not get message!");
                 }
