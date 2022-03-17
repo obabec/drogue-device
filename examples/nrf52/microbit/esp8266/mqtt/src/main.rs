@@ -144,7 +144,7 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     client.connect_to_broker().await;
     let mut button = board.button_a;
     loop {
-        defmt::info!("Application initialized. Press 'A' button to send data");
+        defmt::info!("Press 'A' button to send data");
         button.wait_pressed().await;
         client.send_message(TOPIC, "Hello world!");
     }
@@ -161,14 +161,14 @@ static DNS: StaticDnsResolver<'static, 3> = StaticDnsResolver::new(&[
 
 pub struct Receiver {
     display: Address<LedMatrixActor>,
-    socket: DrogueNetwork<WifiActor>,
+    socket: Option<DrogueNetwork<WifiActor>>,
 }
 
 impl Receiver {
     pub fn new(display: Address<LedMatrixActor>, socket: DrogueNetwork<WifiActor>) -> Self {
         Self {
             display,
-            socket,
+            socket: Some(socket),
         }
     }
 }
@@ -202,8 +202,8 @@ impl Actor for Receiver {
             let mut recv_buffer = [0; 100];
             let mut write_buffer = [0; 100];
 
-            let mut client = MqttClientV5::<_, 5>::new(
-                self.socket,
+            let mut client = MqttClientV5::<DrogueNetwork<WifiActor>, 5>::new(
+                self.socket.take().unwrap(),
                 &mut write_buffer,
                 100,
                 &mut recv_buffer,
