@@ -16,14 +16,13 @@ use drogue_device::{
     actors::wifi::*,
     bsp::{boards::nrf52::microbit::*, Board},
     clients::mqtt::*,
-    domain::temperature::Celsius,
     drivers::dns::*,
     traits::dns::*,
     traits::ip::*,
     traits::tcp::*,
     *,
 };
-use drogue_device::{actors::wifi::esp8266::*, drogue, traits::wifi::*, DeviceContext, Package};
+use drogue_device::{actors::wifi::esp8266::*, drogue, traits::wifi::*, Package};
 use embassy::util::Forever;
 use embassy_nrf::{
     gpio::{Level, Output, OutputDrive},
