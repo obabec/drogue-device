@@ -4,8 +4,6 @@
 #![feature(generic_associated_types)]
 #![feature(type_alias_impl_trait)]
 
-extern crate alloc;
-
 use core::future::Future;
 use defmt::{info, warn};
 use defmt_rtt as _;
@@ -125,7 +123,7 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     let receiver = RECEIVER.mount(spawner, Receiver::new(matrix, DrogueNetwork::new(socket_receiver)));
 
     let mut config = ClientConfig::new();
-    config.add_qos(QualityOfService::QoS1);
+    config.add_qos(QualityOfService::QoS0);
     config.max_packet_size = 60;
     config.keep_alive = 3600;
     config.properties.push(Property::ReceiveMaximum(20));
@@ -140,11 +138,13 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
         100,
         config,
     );
+    defmt::info!("[PUBLISHER] Connecting to broker");
     client.connect_to_broker().await;
     let mut button = board.button_a;
     loop {
-        defmt::info!("Press 'A' button to send data");
+        defmt::info!("[PUBLISHER] Press 'A' button to send data");
         button.wait_pressed().await;
+        defmt::info!("[PUBLISHER] sending message");
         client.send_message(TOPIC, "Hello world!");
     }
 }
@@ -194,7 +194,7 @@ impl Actor for Receiver {
     {
         async move {
             let mut config = ClientConfig::new();
-            config.add_qos(QualityOfService::QoS1);
+            config.add_qos(QualityOfService::QoS0);
             config.max_packet_size = 60;
             config.keep_alive = 3600;
             config.properties.push(Property::ReceiveMaximum(20));
@@ -212,13 +212,15 @@ impl Actor for Receiver {
             client.connect_to_broker().await;
             client.subscribe_to_topic(TOPIC_S).await;
             loop {
+                defmt::info!("[RECEIVER] Waiting for new message");
                 let msg = { client.receive_message().await };
                 if msg.is_ok() {
                     let message = msg.unwrap();
-                    info!("Received!");
-                    self.display.scroll(core::str::from_utf8(message).unwrap());
+                    let act_message = core::str::from_utf8(message).unwrap();
+                    defmt::info!("[RECEIVER] Received: {}", act_message);
+                    self.display.scroll(act_message);
                 } else {
-                    warn!("Could not get message!");
+                    defmt::warn!("[RECEIVER] Could not get message!");
                 }
 
             }
