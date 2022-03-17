@@ -9,6 +9,8 @@ use defmt::{info, warn};
 use defmt_rtt as _;
 use panic_probe as _;
 
+use drogue_device::traits::button::Button;
+use drogue_device::traits::led::TextDisplay;
 use drogue_device::{
     actors::socket::*,
     actors::wifi::*,
@@ -21,6 +23,7 @@ use drogue_device::{
     *,
 };
 use drogue_device::{actors::wifi::esp8266::*, drogue, traits::wifi::*, Package};
+use embassy::time::{Duration, Timer};
 use embassy::util::Forever;
 use embassy_nrf::{
     gpio::{Level, Output, OutputDrive},
@@ -34,8 +37,6 @@ use rust_mqtt::{
     client::{client_config::ClientConfig, client_v5::MqttClientV5},
     packet::v5::{property::Property, publish_packet::QualityOfService},
 };
-use drogue_device::traits::button::Button;
-use drogue_device::traits::led::TextDisplay;
 
 const WIFI_SSID: &str = drogue::config!("wifi-ssid");
 const WIFI_PSK: &str = drogue::config!("wifi-password");
@@ -56,7 +57,6 @@ bind_bsp!(Microbit, BSP);
 type WifiDriver = Esp8266Wifi<TX, RX, ENABLE, RESET>;
 type WifiActor = <WifiDriver as Package>::Primary;
 
-
 #[embassy::main]
 async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     let board = Microbit::new(p);
@@ -64,7 +64,6 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     let mut config = uarte::Config::default();
     config.parity = uarte::Parity::EXCLUDED;
     config.baudrate = uarte::Baudrate::BAUD115200;
-    
 
     let irq = interrupt::take!(UARTE0_UART0);
     let uart = Uarte::new_with_rtscts(
@@ -82,7 +81,6 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     let enable_pin = Output::new(board.p0_09, Level::Low, OutputDrive::Standard);
     let reset_pin = Output::new(board.p0_10, Level::Low, OutputDrive::Standard);
 
-
     static DRIVER: Forever<WifiDriver> = Forever::new();
     let driver = DRIVER.put(Esp8266Wifi::new(tx, rx, enable_pin, reset_pin));
 
@@ -94,7 +92,6 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     .await
     .unwrap();
     defmt::info!("Done");
-
 
     let ips = DNS.resolve(HOST).await.expect("unable to resolve host");
     let ip = ips[0];
@@ -122,9 +119,11 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     static LED_MATRIX: ActorContext<LedMatrixActor> = ActorContext::new();
     let matrix = LED_MATRIX.mount(spawner, LedMatrixActor::new(board.led_matrix, None));
 
-
     static RECEIVER: ActorContext<Receiver> = ActorContext::new();
-    let receiver = RECEIVER.mount(spawner, Receiver::new(matrix, DrogueNetwork::new(socket_receiver)));
+    let receiver = RECEIVER.mount(
+        spawner,
+        Receiver::new(matrix, DrogueNetwork::new(socket_receiver)),
+    );
 
     let mut config = ClientConfig::new();
     config.add_qos(QualityOfService::QoS0);
@@ -143,13 +142,14 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
         config,
     );
     defmt::info!("[PUBLISHER] Connecting to broker");
-    client.connect_to_broker().await;
+    client.connect_to_broker().await.unwrap();
     let mut button = board.button_a;
     loop {
         defmt::info!("[PUBLISHER] Press 'A' button to send data");
         button.wait_pressed().await;
         defmt::info!("[PUBLISHER] sending message");
-        client.send_message(TOPIC, "Hello world!");
+        client.send_message(TOPIC, "Hello world!").await.unwrap();
+        defmt::info!("[PUBLISHER] message sent");
     }
 }
 
@@ -193,8 +193,8 @@ impl Actor for Receiver {
         _: Address<Self>,
         inbox: &'m mut M,
     ) -> Self::OnMountFuture<'m, M>
-        where
-            M: Inbox<Self> + 'm,
+    where
+        M: Inbox<Self> + 'm,
     {
         async move {
             let mut config = ClientConfig::new();
@@ -213,11 +213,11 @@ impl Actor for Receiver {
                 100,
                 config,
             );
-            client.connect_to_broker().await;
-            client.subscribe_to_topic(TOPIC_S).await;
+            client.connect_to_broker().await.unwrap();
+            client.subscribe_to_topic(TOPIC_S).await.unwrap();
             loop {
                 defmt::info!("[RECEIVER] Waiting for new message");
-                let msg = { client.receive_message().await };
+                let msg = client.receive_message().await;
                 if msg.is_ok() {
                     let message = msg.unwrap();
                     let act_message = core::str::from_utf8(message).unwrap();
@@ -226,7 +226,7 @@ impl Actor for Receiver {
                 } else {
                     defmt::warn!("[RECEIVER] Could not get message!");
                 }
-
+                Timer::after(Duration::from_secs(2)).await;
             }
         }
     }

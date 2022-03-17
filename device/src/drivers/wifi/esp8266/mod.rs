@@ -46,8 +46,6 @@ pub enum DriverError {
     OperationNotSupported,
 }
 
-type CommandBuffer = (usize, [u8; 256]);
-
 pub struct Initialized {
     signal: Signal<Result<(), DriverError>>,
     initialized: AtomicBool,
@@ -103,7 +101,6 @@ where
 
 pub struct Esp8266Driver {
     initialized: Initialized,
-    command_channel: Channel<DriverMutex, CommandBuffer, 2>,
     response_channel: Channel<DriverMutex, AtResponse, 2>,
     notification_channel: Channel<DriverMutex, AtResponse, 2>,
 }
@@ -112,7 +109,6 @@ impl Esp8266Driver {
     pub fn new() -> Self {
         Self {
             initialized: Initialized::new(),
-            command_channel: Channel::new(),
             response_channel: Channel::new(),
             notification_channel: Channel::new(),
         }

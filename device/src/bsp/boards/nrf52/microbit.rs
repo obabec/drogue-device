@@ -1,6 +1,6 @@
 use crate::actors::led::matrix::LedMatrixActor as MatrixActor;
 use crate::bsp::Board;
-use crate::drivers::{button::Button, led::matrix::LedMatrix as LedMatrixDriver, ActiveLow};
+use crate::drivers::{button::Button, led::matrix::LedMatrix as LedMatrixDriver, ActiveHigh};
 use crate::{
     domain::temperature::Celsius,
     domain::{temperature::Temperature, SensorAcquisition},
@@ -23,10 +23,10 @@ pub type LedMatrix = LedMatrixDriver<Output<'static, AnyPin>, 5, 5>;
 pub type LedMatrixActor = MatrixActor<Output<'static, AnyPin>, 5, 5>;
 
 pub type PinButtonA = Input<'static, P0_14>;
-pub type ButtonA = Button<Input<'static, P0_14>, ActiveLow>;
+pub type ButtonA = Button<Input<'static, P0_14>, ActiveHigh>;
 
 pub type PinButtonB = Input<'static, P0_23>;
-pub type ButtonB = Button<Input<'static, P0_23>, ActiveLow>;
+pub type ButtonB = Button<Input<'static, P0_23>, ActiveHigh>;
 
 pub struct Microbit {
     pub led_matrix: LedMatrix,
