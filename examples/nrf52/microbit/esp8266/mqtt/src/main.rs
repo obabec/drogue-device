@@ -60,7 +60,7 @@ type WifiActor = <WifiDriver as Package>::Primary;
 #[embassy::main]
 async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     let board = Microbit::new(p);
-
+    defmt::info!("Started");
     static LED_MATRIX: ActorContext<LedMatrixActor> = ActorContext::new();
     let matrix = LED_MATRIX.mount(spawner, LedMatrixActor::new(board.led_matrix, None));
 
@@ -100,6 +100,7 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     let ips = DNS.resolve(HOST).await.expect("unable to resolve host");
     let ip = ips[0];
     let mut socket_publish = Socket::new(wifi, wifi.open().await.unwrap());
+    defmt::info!("Creating sockets");
 
     socket_publish
         .connect(
