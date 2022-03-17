@@ -61,9 +61,6 @@ type WifiActor = <WifiDriver as Package>::Primary;
 async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     let board = Microbit::new(p);
     defmt::info!("Started");
-    static LED_MATRIX: ActorContext<LedMatrixActor> = ActorContext::new();
-    let matrix = LED_MATRIX.mount(spawner, LedMatrixActor::new(board.led_matrix, None));
-
     let mut config = uarte::Config::default();
     config.parity = uarte::Parity::EXCLUDED;
     config.baudrate = uarte::Baudrate::BAUD115200;
@@ -96,6 +93,8 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
     })
     .await
     .unwrap();
+    defmt::info!("Done");
+
 
     let ips = DNS.resolve(HOST).await.expect("unable to resolve host");
     let ip = ips[0];
@@ -119,6 +118,10 @@ async fn main(spawner: embassy::executor::Spawner, p: Peripherals) {
         )
         .await
         .expect("Error creating connection");
+
+    static LED_MATRIX: ActorContext<LedMatrixActor> = ActorContext::new();
+    let matrix = LED_MATRIX.mount(spawner, LedMatrixActor::new(board.led_matrix, None));
+
 
     static RECEIVER: ActorContext<Receiver> = ActorContext::new();
     let receiver = RECEIVER.mount(spawner, Receiver::new(matrix, DrogueNetwork::new(socket_receiver)));
